@@ -20,7 +20,7 @@ def request(content, author):
   headers = {
 	  "content-type": "application/json",
 	  "X-RapidAPI-Host": "waifu.p.rapidapi.com",
-	  "X-RapidAPI-Key": "f6ea58b7d1msh4bc1d05012a6974p1139a9jsn2a6eab173bd8"
+	  "X-RapidAPI-Key": "your key"
   }
 
   response = requests.request("POST", url, json=payload, headers=headers, params=querystring)
