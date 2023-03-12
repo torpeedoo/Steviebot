@@ -1,62 +1,82 @@
 import discord
 import os
-import requests
-import random
-import time
-
+from discord.ext import commands
+from text_to_speech import tts
 from keep_alive import keep_alive
+from discord import FFmpegPCMAudio
+from chatbot import request, reset
 
-
-client = discord.Client()
-
-url = "https://waifu.p.rapidapi.com/path"
-
-def request(content, author):
-  querystring = {"user_id":"sample_user_id","message":content,"from_name":author,"to_name":"Stevie",
-  "situation":"Girl loves Boy.","translate_from":"auto","translate_to":"auto"}
-
-  payload = {}
-
-  headers = {
-	  "content-type": "application/json",
-	  "X-RapidAPI-Host": "waifu.p.rapidapi.com",
-	  "X-RapidAPI-Key": "your key"
-  }
-
-  response = requests.request("POST", url, json=payload, headers=headers, params=querystring)
-
-  return response.text
-  
+client = commands.Bot(command_prefix='-', intents=discord.Intents.all()) 
 
 @client.event
 async def on_ready():
+  await client.tree.sync()
   print("Logged into {0.user}".format(client))
-  
 
-#if ctx is detected then do one of the things below
-@client.event 
-async def on_message(ctx):
-  if ctx.author == client.user:
-    return
-  
-  elif "$talk to me" in ctx.content:
-    await ctx.channel.send("what do you want to talk about?")
 
+@client.tree.command(name="voicechatbot", description="Initializes the VC integrated chatbot")
+async def voicechatbot(interaction:discord.Interaction):
+    reset()
+    await interaction.response.send_message("Chatbot initialized, use $help command for list of commands.")
+    await interaction.channel.send("what would you like to talk about?")
+    
+    if (interaction.user.voice):
+      channel = interaction.user.voice.channel
+      voice = await channel.connect()
+    else:
+      await interaction.channel.send("not in vc")
+  
     while True:
       msg = await client.wait_for("message")
-      if msg.content == "$stop":
+      
+      if msg.content == "/stop":
+        await voice.disconnect()
+        await msg.channel.send("Chatbot Shutting Down...")
         break
+
+      elif msg.content == "/help":
+        
+        await msg.channel.send("commands: $stop")
+
       else:
+          
         message = msg.content
         author = msg.author
         response = request(message, author)
-        await ctx.channel.send(response)
+        tts(response)
+        source = FFmpegPCMAudio("voiceOutput.mp3")
+        voice.play(source)
+        await msg.channel.send(response)
 
+
+
+
+
+
+@client.tree.command(name="textchatbot", description="Initializes the text based chatbot")
+async def textchatbot(interaction:discord.Interaction): 
+    reset()
+    await interaction.response.send_message("Chatbot initialized, use $help command for list of commands.")
+    await interaction.channel.send("what would you like to talk about?")
+    
+    while True:
+      msg = await client.wait_for("message")
+      if msg.content == "/stop":
+        await msg.channel.send("Chatbot Shutting Down...")
+        break
+
+      elif msg.content == "/help":
+        
+        await msg.channel.send("commands: $stop")
       
+      else:
 
-    
+        message = msg.content
+        author = msg.author
+        response = request(message, author)
+        await msg.channel.send(response)
 
-    
-#pinging the web server so it can continuously run
+
+  
 keep_alive()
-client.run(os.getenv("TOKEN"))
+client.run(os.environ['TOKEN'])
